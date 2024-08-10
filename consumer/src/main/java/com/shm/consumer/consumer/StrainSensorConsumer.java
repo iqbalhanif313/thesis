@@ -1,0 +1,40 @@
+package com.shm.consumer.consumer;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.shm.consumer.service.SensorDataService;
+import com.shm.consumer.util.DateUtil;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+
+import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class StrainSensorConsumer {
+  private final SensorDataService sensorDataService;
+  private final Log logger = LogFactory.getLog("logger");
+
+  @KafkaListener(topics =  {
+      "SG1", "SG2","SG3", "SG4","SG5", "SG6","SG7", "SG8","SG9", "SG10","SG11", "SG12","SG13", "SG14","SG15", "SG16",
+      "SG17", "SG18","SG19", "SG20","SG21", "SG22","SG23", "SG24","SG25", "SG26","SG27", "SG28"
+  }, groupId = "sensor_group")
+  public void listen(String message) {
+    try{
+      Gson gson = new Gson();
+      Type type = new TypeToken<Map<String, String>>() {}.getType();
+      Map<String, String> data = gson.fromJson(message, type);
+      Date timestamp = DateUtil.getNowWithDatasetTimestamp(data.get("TIMESTAMP"));
+      sensorDataService.saveSensorData(data.get("sensor"), "data", Double.parseDouble(data.get("data")),timestamp);
+    }catch (Exception e){
+      logger.error("error on sending the data", e);
+    }
+
+  }
+}
