@@ -1,4 +1,4 @@
-package com.shm.consumer.consumer;
+package com.shm.consumer.consumer.sensor;
 
 import com.shm.consumer.service.SensorDataService;
 import lombok.RequiredArgsConstructor;
