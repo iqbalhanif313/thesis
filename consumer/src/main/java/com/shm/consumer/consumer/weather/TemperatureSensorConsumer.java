@@ -11,7 +11,7 @@ public class TemperatureSensorConsumer {
 
   @KafkaListener( topics = "temperature-data", id = "temperature1", groupId = "temperature-group")
   public void consumer1(ConsumerRecord<String, String> record){
-    System.out.println("Sensor:" + record.key()+"\n Temperature: " + record.value() );
+//    System.out.println("Sensor:" + record.key()+"\n Temperature: " + record.value() );
   }
 
   @KafkaListener( topics = "temperature-data", id = "temperature2",groupId = "temperature-group")

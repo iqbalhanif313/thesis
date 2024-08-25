@@ -21,6 +21,18 @@ services:
       KAFKA_DEFAULT_REPLICATION_FACTOR: 2
       CLUSTER_ID: 'ciWo7IWazngRchmPES6q5A=='
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka1:29092,kafka2:29092,kafka3:29092'
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "true"
+      KAFKA_CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
+      KAFKA_CLASSPATH: "/usr/share/java/confluent-telemetry/*" 
+      # Self-balancing settings
+      KAFKA_CONFLUENT_BALANCER_ENABLE: 'true'
+      KAFKA_CONFLUENT_BALANCER_HEAL_BROKER_FAILURE_THRESHOLD_MS: 3600000
+      # HTTP server for self-balancing
+      KAFKA_CONFLUENT_HTTP_SERVER_LISTENERS: 'http://0.0.0.0:8090'
+    volumes:
+      - ./metrics:/usr/share/java/confluent-telemetry
 
   kafka2:
     image: confluentinc/cp-kafka
@@ -43,6 +55,18 @@ services:
       KAFKA_DEFAULT_REPLICATION_FACTOR: 2
       CLUSTER_ID: 'ciWo7IWazngRchmPES6q5A=='
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka1:29092,kafka2:29092,kafka3:29092'
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "true"
+      KAFKA_CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
+      KAFKA_CLASSPATH: "/usr/share/java/confluent-telemetry/*" 
+      # Self-balancing settings
+      KAFKA_CONFLUENT_BALANCER_ENABLE: 'true'
+      KAFKA_CONFLUENT_BALANCER_HEAL_BROKER_FAILURE_THRESHOLD_MS: 3600000
+      # HTTP server for self-balancing
+      KAFKA_CONFLUENT_HTTP_SERVER_LISTENERS: 'http://0.0.0.0:8090'
+    volumes:
+      - ./metrics:/usr/share/java/confluent-telemetry
 
   kafka3:
     image: confluentinc/cp-kafka
@@ -65,6 +89,18 @@ services:
       KAFKA_DEFAULT_REPLICATION_FACTOR: 2
       CLUSTER_ID: 'ciWo7IWazngRchmPES6q5A=='
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka1:29092,kafka2:29092,kafka3:29092'
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: "true"
+      KAFKA_CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
+      KAFKA_CLASSPATH: "/usr/share/java/confluent-telemetry/*" 
+      # Self-balancing settings
+      KAFKA_CONFLUENT_BALANCER_ENABLE: 'true'
+      KAFKA_CONFLUENT_BALANCER_HEAL_BROKER_FAILURE_THRESHOLD_MS: 3600000
+      # HTTP server for self-balancing
+      KAFKA_CONFLUENT_HTTP_SERVER_LISTENERS: 'http://0.0.0.0:8090'
+    volumes:
+      - ./metrics:/usr/share/java/confluent-telemetry
 
   schema-registry:
     image: confluentinc/cp-schema-registry
@@ -81,20 +117,30 @@ services:
       - kafka2
       - kafka3
   influxdb:
-    image: influxdb:2.7.10
+    image: influxdb:1.8
     container_name: influxdb
     ports:
       - "8086:8086"
     volumes:
       - ../../influxdb-cache/data:/var/lib/influxdb
     environment:
-    - DOCKER_INFLUXDB_INIT_MODE=setup
-    - DOCKER_INFLUXDB_INIT_USERNAME=root
-    - DOCKER_INFLUXDB_INIT_PASSWORD=root_password
-    - DOCKER_INFLUXDB_INIT_ORG=monash
-    - DOCKER_INFLUXDB_INIT_BUCKET=shm
-    - DOCKER_INFLUXDB_INIT_RETENTION=1w
-    - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=EVJymyJ0KyjX8UVvg5wEXbEHhgmJ2h6tOnMl57l8b2Bnr46qY1qaBH0dCgrcKQ1NJPYw2DAsUjtqRS6movnlwA==
+      - INFLUXDB_DB=shm
+      - INFLUXDB_HTTP_AUTH_ENABLED=true
+      - INFLUXDB_ADMIN_USER=root
+      - INFLUXDB_ADMIN_PASSWORD=root_password
+    restart: unless-stopped
+  chronograf:
+    image: chronograf:1.8
+    container_name: chronograf
+    ports:
+      - "8888:8888"
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_USERNAME=root
+      - INFLUXDB_PASSWORD=root_password
+    restart: unless-stopped
   connect:
     image: confluentinc/cp-kafka-connect:latest
     hostname: connect
@@ -121,7 +167,68 @@ services:
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_PLUGIN_PATH: /usr/share/java
+      CONNECT_PLUGIN_PATH: /usr/local/share/kafka/plugins,/usr/share/filestream-connectors
+    volumes:
+      - ./plugins:/usr/local/share/kafka/plugins
+  ksqldb-server:
+    image: confluentinc/cp-ksqldb-server:7.4.0
+    hostname: ksqldb-server
+    container_name: ksqldb-server
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - connect
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_CONFIG_DIR: "/etc/ksql"
+      KSQL_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      KSQL_HOST_NAME: ksqldb-server
+      KSQL_LISTENERS: "http://0.0.0.0:8088"
+      KSQL_CACHE_MAX_BYTES_BUFFERING: 0
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      KSQL_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      KSQL_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      KSQL_KSQL_CONNECT_URL: "http://connect:8083"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR: 1
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: 'true'
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: 'true'
+  ksqldb-cli:
+    image: confluentinc/cp-ksqldb-cli:7.4.0
+    container_name: ksqldb-cli
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - connect
+      - ksqldb-server
+    entrypoint: /bin/sh
+    tty: true
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.4.0
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - schema-registry
+      - connect
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      CONTROL_CENTER_CONNECT_CONNECT-DEFAULT_CLUSTER: 'connect:8083'
+      CONTROL_CENTER_CONNECT_HEALTHCHECK_ENDPOINT: '/connectors'
+      CONTROL_CENTER_KSQL_KSQLDB1_URL: "http://ksqldb-server:8088"
+      CONTROL_CENTER_KSQL_KSQLDB1_ADVERTISED_URL: "http://ksqldb-server:8088"
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+      PORT: 9021
 networks:
   default:
     name: my-network
