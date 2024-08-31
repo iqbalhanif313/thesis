@@ -2,18 +2,44 @@ import pandas as pd
 import os
 import time
 import json
-from confluent_kafka import Producer
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from confluent_kafka import SerializingProducer
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroSerializer
+from confluent_kafka.serialization import StringSerializer
 
-# Kafka configuration
-kafka_conf = {
-    'bootstrap.servers': 'localhost:9092'  # Replace with your Kafka broker
+producer_conf = {
+    'bootstrap.servers': 'localhost:9092',
+    'key.serializer': StringSerializer('utf_8'),  # String serializer for the key
+    'value.serializer': None  # We'll assign the AvroSerializer later
 }
 
-# Create a Kafka producer instance
-producer = Producer(kafka_conf)
+# Schema Registry configuration
+schema_registry_conf = {
+    'url': 'http://localhost:8081'
+}
+
+acc_to_send = ['A1', 'A2']
+gs_to_send = ['SG1', 'SG']
+
+# Create a Schema Registry client
+schema_registry_client = SchemaRegistryClient(schema_registry_conf)
+
+# Fetch the latest schema from the schema registry for the topic
+subject_name = 'sensor-sg-value'
+schema_info = schema_registry_client.get_latest_version(subject_name)
+schema = schema_info.schema
+
+# Create AvroSerializer for the value
+avro_serializer = AvroSerializer(schema_registry_client, schema, lambda obj, ctx: obj)
+
+# Update producer configuration with AvroSerializer for the value
+producer_conf['value.serializer'] = avro_serializer
+
+# Create a SerializingProducer
+producer = SerializingProducer(producer_conf)
 
 def delivery_report(err, msg):
     """ Delivery report callback called once for each message produced to indicate delivery result.
@@ -46,8 +72,32 @@ def read_all_csvs_in_folder(folder_path):
 
 def produce_message(topic, message):
     """ Produce a message to Kafka. """
-    producer.produce(topic, value=message, callback=delivery_report)
+    if "A" not in topic:
+        # print("skipped")
+        # producer.produce(topic="sensor-acc",key="sensor_data_"+topic,  value=message, on_delivery=delivery_report)
+    # else:
+        producer.produce(topic="sensor-sg",key="sg_data_"+topic,  value=message, on_delivery=delivery_report)
     producer.poll(0)
+
+def parse_timestamp(timestamp_str):
+    # Define possible timestamp formats
+    formats = [
+        '%Y-%m-%d %H:%M:%S.%f',  # Format with 6 digits of microseconds
+        '%Y-%m-%d %H:%M:%S.%f',  # Format with 3 digits of milliseconds
+        '%Y-%m-%d %H:%M:%S',      # Format without milliseconds  # Format with 2 digits of milliseconds (example)
+    ]
+    
+    for fmt in formats:
+        try:
+            # Attempt to parse the timestamp with the given format
+            return datetime.strptime(timestamp_str, fmt)
+        except ValueError:
+            continue
+    
+    # If no format worked, raise an error
+    raise ValueError(f"Time data '{timestamp_str}' does not match any expected format")
+
+
 
 async def process_row(row, executor):
     print(f"TIMESTAMP: {row['TIMESTAMP']}")
@@ -57,21 +107,29 @@ async def process_row(row, executor):
     tasks = []
     for column in row.index:
         if column not in ['TIMESTAMP']:
-            topic = column
-            message = json.dumps({
-                "TIMESTAMP": str(row['TIMESTAMP']),
+            # Extract milliseconds from the original TIMESTAMP
+            original_timestamp = parse_timestamp(row['TIMESTAMP'])
+            milliseconds = original_timestamp.microsecond // 1000
+            
+            # Get the current date and time
+            now = datetime.now()
+            
+            # Construct the new timestamp with the current date and time but original milliseconds
+            new_timestamp = now.replace(microsecond=milliseconds * 1000)
+            
+            # Format the new timestamp as a string
+            new_timestamp_str = new_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]  # Remove the last 3 digits from microseconds
+            
+            message = {
+                "TIMESTAMP": new_timestamp_str,
                 "data": row[column],
                 "sensor": column
-            }, default=str)
-               # Get the current time
-            current_time = datetime.now()
-
-            # Format the time to include milliseconds
-            formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S.%f")
+            }
+            topic = column
 
             # Print the formatted time
             if(column == 'SG1'):
-                print(f"time now: {formatted_time},  topic: {topic} message: {message}")
+                print(f"time now: {new_timestamp_str},  topic: {topic} message: {message}")
             tasks.append(loop.run_in_executor(executor, produce_message, topic, message))
     
     await asyncio.gather(*tasks)
