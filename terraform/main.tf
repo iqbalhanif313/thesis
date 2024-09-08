@@ -99,6 +99,20 @@ resource "aws_security_group" "kafka_sg" {
     cidr_blocks = ["0.0.0.0/0"]  # Adjust for your specific access needs
   }
 
+  ingress {
+    from_port   = 29092
+    to_port     = 29092
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/10"]  # Adjust for your specific access needs
+  }
+
+  ingress {
+    from_port   = 29093
+    to_port     = 29093
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/10"]  # Adjust for your specific access needs
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
