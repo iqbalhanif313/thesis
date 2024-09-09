@@ -48,6 +48,16 @@ resource "aws_subnet" "control_center_subnet" {
   }
 }
 
+
+resource "aws_subnet" "schema_registry_subnet" {
+  vpc_id     = aws_vpc.kafka_vpc.id
+  cidr_block = "10.0.5.0/24"
+  availability_zone = "ap-southeast-2c"  # Change based on your region's AZs
+  tags = {
+    Name = "schema-registry-subnet"
+  }
+}
+
 # Create an Internet Gateway for public subnets
 resource "aws_internet_gateway" "kafka_igw" {
   vpc_id = aws_vpc.kafka_vpc.id
@@ -86,6 +96,11 @@ resource "aws_route_table_association" "control_center_rta" {
   route_table_id = aws_route_table.kafka_route_table.id
 }
 
+resource "aws_route_table_association" "schema_registry_rta" {
+  subnet_id      = aws_subnet.schema_registry_subnet.id
+  route_table_id = aws_route_table.kafka_route_table.id
+}
+
 # Create Security Group for Kafka brokers
 resource "aws_security_group" "kafka_sg" {
   vpc_id = aws_vpc.kafka_vpc.id
@@ -109,6 +124,19 @@ resource "aws_security_group" "kafka_sg" {
   ingress {
     from_port   = 9092
     to_port     = 9092
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Adjust for your specific access needs
+  }
+  ingress {
+    from_port   = 9021
+    to_port     = 9021
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Adjust for your specific access needs
+  }
+
+  ingress {
+    from_port   = 8081
+    to_port     = 8081
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]  # Adjust for your specific access needs
   }
@@ -218,6 +246,30 @@ resource "aws_instance" "kafka_broker_3" {
   }
 }
 
+
+resource "aws_instance" "schema_registry" {
+  ami             = "ami-0892a9c01908fafd1" # Use a valid AMI ID for ap-southeast-1 (adjust based on your requirement)
+  instance_type   = "t2.micro"     # Free-tier eligible instance
+  subnet_id       = aws_subnet.schema_registry_subnet.id
+  key_name        = "thesis-kafka"
+  vpc_security_group_ids = [aws_security_group.kafka_sg.id]
+  associate_public_ip_address = true
+  tags = {
+    Name = "control-center"
+  }
+  private_ip                  = var.schema_registry_private_ip
+  user_data = templatefile("schema_registry_user_data.sh.tpl", {
+    broker1_private_ip  = aws_instance.kafka_broker_1.private_ip
+    broker2_private_ip  = aws_instance.kafka_broker_2.private_ip
+    broker3_private_ip  = aws_instance.kafka_broker_3.private_ip
+  })
+
+  root_block_device {
+    volume_size = 30 # Ensure this is within the free-tier limits
+    volume_type = "gp3"
+  }
+}
+
 resource "aws_instance" "control_center" {
   ami             = "ami-0892a9c01908fafd1" # Use a valid AMI ID for ap-southeast-1 (adjust based on your requirement)
   instance_type   = "t2.micro"     # Free-tier eligible instance
@@ -230,9 +282,10 @@ resource "aws_instance" "control_center" {
   }
   private_ip                  = var.control_center_private_ip
   user_data = templatefile("control_center_user_data.sh.tpl", {
-    broker1_private_ip  = var.broker1_private_ip
-    broker2_private_ip  = var.broker2_private_ip
-    broker3_private_ip  = var.broker3_private_ip
+    broker1_private_ip  = aws_instance.kafka_broker_1.private_ip
+    broker2_private_ip  = aws_instance.kafka_broker_2.private_ip
+    broker3_private_ip  = aws_instance.kafka_broker_3.private_ip
+    schema_registry_private_ip = aws_instance.schema_registry.private_ip
   })
 
   root_block_device {
@@ -244,8 +297,9 @@ resource "aws_instance" "control_center" {
 # Output the public IP of the exposed broker
 output "kafka_broker_ips" {
   value = [
-#    aws_instance.kafka_broker_1.public_ip,
-#    aws_instance.kafka_broker_2.public_ip,
-    aws_instance.kafka_broker_3.public_ip
+    aws_instance.kafka_broker_1.public_ip,
+    aws_instance.kafka_broker_2.public_ip,
+    aws_instance.kafka_broker_3.public_ip,
+    aws_instance.control_center.public_ip
   ]
 }

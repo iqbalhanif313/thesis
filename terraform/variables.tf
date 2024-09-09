@@ -13,3 +13,7 @@ variable "broker3_private_ip" {
 variable "control_center_private_ip" {
   default = "10.0.4.10"
 }
+
+variable "schema_registry_private_ip" {
+  default = "10.0.5.10"
+}
