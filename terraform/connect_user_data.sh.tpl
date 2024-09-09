@@ -20,17 +20,13 @@ cd thesis
 BROKER1_IP="${broker1_private_ip}"
 BROKER2_IP="${broker2_private_ip}"
 BROKER3_IP="${broker3_private_ip}"
-SCHEMA_REGISTRY_IP="${schema_registry_private_ip}"
-CONNECT_PRIVATE_IP="${connect_private_ip}"
 
 
 # Update docker-compose.yml for Broker 1 with dynamic IPs and node ID
-sed -i "s/kafka1/$BROKER1_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
-sed -i "s/kafka2/$BROKER2_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
-sed -i "s/kafka3/$BROKER3_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
-sed -i "s/schema-registry/$SCHEMA_REGISTRY_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
-sed -i "s/connect/$CONNECT_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
+sed -i "s/kafka1/$BROKER1_IP/g" /home/ubuntu/thesis/docker/connect.yaml
+sed -i "s/kafka2/$BROKER2_IP/g" /home/ubuntu/thesis/docker/connect.yaml
+sed -i "s/kafka3/$BROKER3_IP/g" /home/ubuntu/thesis/docker/connect.yaml
 
 
 # Run the service
-sudo docker-compose -f /home/ubuntu/thesis/docker/control-center.yaml up -d
+sudo docker-compose -f /home/ubuntu/thesis/docker/connect.yaml up -d

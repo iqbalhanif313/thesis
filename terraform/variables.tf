@@ -17,3 +17,7 @@ variable "control_center_private_ip" {
 variable "schema_registry_private_ip" {
   default = "10.0.5.10"
 }
+
+variable "connect_private_ip" {
+  default = "10.0.6.10"
+}
