@@ -21,3 +21,11 @@ variable "schema_registry_private_ip" {
 variable "connect_private_ip" {
   default = "10.0.6.10"
 }
+
+variable "ksqldb_private_ip" {
+  default = "10.0.7.10"
+}
+
+variable "ksqldb2_private_ip" {
+  default = "10.0.8.10"
+}

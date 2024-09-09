@@ -22,7 +22,8 @@ BROKER2_IP="${broker2_private_ip}"
 BROKER3_IP="${broker3_private_ip}"
 SCHEMA_REGISTRY_IP="${schema_registry_private_ip}"
 CONNECT_PRIVATE_IP="${connect_private_ip}"
-
+KSQLDB_PRIVATE_IP="${ksqldb_private_ip}"
+KSQLDB2_PRIVATE_IP="${ksqldb2_private_ip}"
 
 # Update docker-compose.yml for Broker 1 with dynamic IPs and node ID
 sed -i "s/kafka1/$BROKER1_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
@@ -30,6 +31,8 @@ sed -i "s/kafka2/$BROKER2_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/kafka3/$BROKER3_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/schema-registry/$SCHEMA_REGISTRY_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/connect/$CONNECT_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
+sed -i "s/ksqldb-server/$KSQLDB_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
+sed -i "s/ksqldb2-server/$KSQLDB2_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 
 
 # Run the service
