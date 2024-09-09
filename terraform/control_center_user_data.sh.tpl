@@ -30,7 +30,7 @@ sed -i "s/kafka1/$BROKER1_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/kafka2/$BROKER2_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/kafka3/$BROKER3_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/schema-registry/$SCHEMA_REGISTRY_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
-sed -i "s/connect/$CONNECT_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
+sed -i "s/connect-server/$CONNECT_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/ksqldb-server/$KSQLDB_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 sed -i "s/ksqldb2-server/$KSQLDB2_PRIVATE_IP/g" /home/ubuntu/thesis/docker/control-center.yaml
 
