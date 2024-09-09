@@ -39,6 +39,15 @@ resource "aws_subnet" "kafka_subnet_az3" {
   }
 }
 
+resource "aws_subnet" "control_center_subnet" {
+  vpc_id     = aws_vpc.kafka_vpc.id
+  cidr_block = "10.0.4.0/24"
+  availability_zone = "ap-southeast-2c"  # Change based on your region's AZs
+  tags = {
+    Name = "control-center-subnet"
+  }
+}
+
 # Create an Internet Gateway for public subnets
 resource "aws_internet_gateway" "kafka_igw" {
   vpc_id = aws_vpc.kafka_vpc.id
@@ -69,6 +78,11 @@ resource "aws_route_table_association" "kafka_rta_az2" {
 
 resource "aws_route_table_association" "kafka_rta_az3" {
   subnet_id      = aws_subnet.kafka_subnet_az3.id
+  route_table_id = aws_route_table.kafka_route_table.id
+}
+
+resource "aws_route_table_association" "control_center_rta" {
+  subnet_id      = aws_subnet.control_center_subnet.id
   route_table_id = aws_route_table.kafka_route_table.id
 }
 
@@ -140,7 +154,7 @@ resource "aws_instance" "kafka_broker_1" {
   }
   private_ip                  = var.broker1_private_ip
 
-  user_data = templatefile("user_data.sh.tpl", {
+  user_data = templatefile("broker_user_data.sh.tpl", {
     broker_id           = 1
     broker1_private_ip  = var.broker1_private_ip
     broker2_private_ip  = var.broker2_private_ip
@@ -166,7 +180,7 @@ resource "aws_instance" "kafka_broker_2" {
   }
   private_ip                  = var.broker2_private_ip
 
-  user_data = templatefile("user_data.sh.tpl", {
+  user_data = templatefile("broker_user_data.sh.tpl", {
     broker_id           = 2
     broker1_private_ip  = var.broker1_private_ip
     broker2_private_ip  = var.broker2_private_ip
@@ -191,8 +205,31 @@ resource "aws_instance" "kafka_broker_3" {
     Name = "kafka-broker-3"
   }
   private_ip                  = var.broker3_private_ip
-  user_data = templatefile("user_data.sh.tpl", {
+  user_data = templatefile("broker_user_data.sh.tpl", {
     broker_id           = 3
+    broker1_private_ip  = var.broker1_private_ip
+    broker2_private_ip  = var.broker2_private_ip
+    broker3_private_ip  = var.broker3_private_ip
+  })
+
+  root_block_device {
+    volume_size = 30 # Ensure this is within the free-tier limits
+    volume_type = "gp3"
+  }
+}
+
+resource "aws_instance" "control_center" {
+  ami             = "ami-0892a9c01908fafd1" # Use a valid AMI ID for ap-southeast-1 (adjust based on your requirement)
+  instance_type   = "t2.micro"     # Free-tier eligible instance
+  subnet_id       = aws_subnet.control_center_subnet.id
+  key_name        = "thesis-kafka"
+  vpc_security_group_ids = [aws_security_group.kafka_sg.id]
+  associate_public_ip_address = true
+  tags = {
+    Name = "control-center"
+  }
+  private_ip                  = var.control_center_private_ip
+  user_data = templatefile("control_center_user_data.sh.tpl", {
     broker1_private_ip  = var.broker1_private_ip
     broker2_private_ip  = var.broker2_private_ip
     broker3_private_ip  = var.broker3_private_ip

@@ -9,3 +9,7 @@ variable "broker2_private_ip" {
 variable "broker3_private_ip" {
   default = "10.0.3.10"
 }
+
+variable "control_center_private_ip" {
+  default = "10.0.4.10"
+}
