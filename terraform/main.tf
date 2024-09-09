@@ -103,14 +103,14 @@ resource "aws_security_group" "kafka_sg" {
     from_port   = 29092
     to_port     = 29092
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/10"]  # Adjust for your specific access needs
+    cidr_blocks = ["10.0.0.0/16"]  # Adjust for your specific access needs
   }
 
   ingress {
     from_port   = 29093
     to_port     = 29093
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/10"]  # Adjust for your specific access needs
+    cidr_blocks = ["10.0.0.0/16"]  # Adjust for your specific access needs
   }
 
   egress {
