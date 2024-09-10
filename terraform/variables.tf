@@ -29,3 +29,8 @@ variable "ksqldb_private_ip" {
 variable "ksqldb2_private_ip" {
   default = "10.0.8.10"
 }
+
+
+variable "influxdb_private_ip" {
+  default = "10.0.9.10"
+}
