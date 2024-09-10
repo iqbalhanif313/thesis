@@ -222,7 +222,7 @@ resource "aws_security_group" "kafka_sg" {
 
   ingress {
     from_port   = 8888
-    to_port     = 8081
+    to_port     = 8888
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]  # Adjust for your specific access needs
   }
@@ -335,7 +335,7 @@ resource "aws_instance" "kafka_broker_3" {
 
 resource "aws_instance" "schema_registry" {
   ami             = "ami-0892a9c01908fafd1" # Use a valid AMI ID for ap-southeast-1 (adjust based on your requirement)
-  instance_type   = "t2.large"     # Free-tier eligible instance
+  instance_type   = "t2.micro"     # Free-tier eligible instance
   subnet_id       = aws_subnet.schema_registry_subnet.id
   key_name        = "thesis-kafka"
   vpc_security_group_ids = [aws_security_group.kafka_sg.id]
@@ -343,7 +343,7 @@ resource "aws_instance" "schema_registry" {
   tags = {
     Name = "schema_registry"
   }
-  private_ip                  = var.influxdb_private_ip
+  private_ip                  = var.schema_registry_private_ip
   user_data = templatefile("schema_registry_user_data.sh.tpl", {
     broker1_private_ip  = aws_instance.kafka_broker_1.private_ip
     broker2_private_ip  = aws_instance.kafka_broker_2.private_ip
@@ -435,7 +435,7 @@ resource "aws_instance" "ksqldb2" {
 
 resource "aws_instance" "influxdb" {
   ami             = "ami-0892a9c01908fafd1" # Use a valid AMI ID for ap-southeast-1 (adjust based on your requirement)
-  instance_type   = "t2.small"     # Free-tier eligible instance
+  instance_type   = "t2.micro"     # Free-tier eligible instance
   subnet_id       = aws_subnet.influxdb_subnet.id
   key_name        = "thesis-kafka"
   vpc_security_group_ids = [aws_security_group.kafka_sg.id]
@@ -444,7 +444,7 @@ resource "aws_instance" "influxdb" {
     Name = "influxdb"
   }
   private_ip       = var.influxdb_private_ip
-  user_data = templatefile("influxdb_user_data.sh.tpl")
+  user_data = templatefile("influxdb_user_data.sh.tpl", {})
 
   root_block_device {
     volume_size = 30 # Ensure this is within the free-tier limits
